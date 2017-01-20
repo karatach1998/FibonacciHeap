@@ -1,9 +1,14 @@
+/*
+ * Для сокращения письма будем иногда писать с. к. вместо список корней.
+ */
+
 #include "BinomialHeap.h"
 #include <stdlib.h>
 
 
 
-
+// СОЗДАНИЕ И УНИЧТОЖЕНИЕ
+// ==========================================================================
 
 BlHeap makeBlHeap( void )
 {
@@ -15,52 +20,80 @@ BlHeap makeBlHeap( void )
 
 
 
-void deleteBlHeap( BlHeap* H )
+// recDoneBlTree: Выделяет из pNode поддерево, если оно состоит из одного
+// узла, то освобождает занимаемую им память.
+static void recDoneBlTree( BlNode* pNode )
 {
-    postOrderBl(H, &free);
+
+    if (pNode->child == NULL)
+        // Если дерево является листом, то удаляем его из динамической памяти.
+        free(pNode);
+    else {
+        // Иначе сохраняем текущего сына.
+        BlNode* child = pNode->child;
+        // Уменьшаем дерево Bk до Bk-1.
+        pNode->child = child->sibling;
+
+        // Обратный обход двух поддеревьев.
+        recDoneBlTree(child);
+        recDoneBlTree(pNode);
+    }
 }
 
 
-int isEmptyBl( BlHeap* H )
+
+void doneBlHeap( BlHeap* H )
+{
+    BlNode* current = H->head;  // Текущий узел в списке корней.
+    BlNode* next;               // Указатель на следующий за текущим узел.
+
+
+    // Пока не конец списка.
+    while (current != NULL) {
+        // Сохраняем адрес следуюшего за текущим корня.
+        next = current->sibling;
+        // Выполняем обратный обход с удаление.
+        recDoneBlTree(current);
+        // Сдвигаем текущий указатель к следующему в с. к. узлу.
+        current = next;
+    }
+}
+
+
+// ОПЕРАЦИЯ ПРЕДИКАТ
+// ==========================================================================
+
+
+int isEmptyBl( const BlHeap* H )
 { return H->head == NULL; }
 
 
+// ОСНОВНЫЕ ОПЕРАЦИИ ВЗАИМОДЕЙСТВИЯ
+// ==========================================================================
 
-BlNode* getMinimumBl( BlHeap* H )
+
+TData getMinimumBl( const BlHeap* H )
 {
-    BlNode* minNode = H->head;  // Указатель на минимальный узел кучи H.
-    BlNode* current;            // Указатель на текущий обрабатываемый узел.
+    if (H->head != NULL) {
+        BlNode* minNode = H->head;// Указатель на минимальный узел кучи H.
+        BlNode* current;          // Указатель на текущий обрабатываемый узел.
 
 
-    if (minNode == NULL)
-        // Если список корней кучи H -- пуст, то работа функции окончена.
-        return NULL;
+        // Поиск минимального узла в с. к. кучи H.
+        for (current = minNode->sibling;
+             current != NULL;
+             current = current->sibling) {
+            if (current->data.key < minNode->data.key)
+                // Если текущий узел меньше текущего минимального,
+                // то он становится минимальным.
+                minNode = current;
+        }
 
-    // Поиск минимального узла в с. к. кучи H.
-    for (current = minNode->sibling;
-         current != NULL;
-         current = current->sibling)
-    {
-        if (current->key < minNode->key)
-            // Если текущий узел меньше текущего минимального,
-            // то он становится минимальным.
-            minNode = current;
+        // Возврат информационной части минимального элемента.
+        return minNode->data;
     }
-
-    // Возврат минимального.
-    return minNode;
 }
 
-
-#if 01
-
-#define TESTING
-
-unsigned operationCompare, operationAssignment;
-#define c operationCompare
-#define a operationAssignment
-
-#endif
 
 
 // linkBl: Выполняет связывание узлов P и C, делая C дочерним для P.
@@ -72,7 +105,7 @@ linkBl( BlNode* restrict C, BlNode* restrict P )
      * C -- child
      * P -- parent
      */
-//    a+=4;
+
     C->sibling = P->child;  // Соседом С становиться сын P.
     C->parent = P;          // Отцем C становиться P.
     P->child = C;           // Сыном P становиться C.
@@ -82,443 +115,138 @@ linkBl( BlNode* restrict C, BlNode* restrict P )
 
 
 
-
-#if 01
-
 BlHeap mergeBl( BlHeap* H1, BlHeap* H2 )
 {
     BlHeap H;
 
-    if (H1->head == NULL) {
-        ++c;
-        ++a;
+    if (H1->head == NULL)
+        // Если первая куча пуста, то с. к. итоговой кучи будет состоять из
+        // элементов списка корней второй кучи.
         H.head = H2->head;
-    }
-    else if (H2->head == NULL) {
-        c += 2;
-        ++a;
+    else if (H2->head == NULL)
+        // Аналогично для второй кучи.
         H.head = H1->head;
-    }
     else {
 
-        BlNode* curH;
-        BlNode* curH1 = H1->head;
-        BlNode* curH2 = H2->head;
+        BlNode* curH;             // Текущий узел с. к. итоговой кучи.
+        BlNode* curH1 = H1->head; // Текущий обрабатыаемый узел с. к. кучи H1.
+        BlNode* curH2 = H2->head; // Текущий обрабатыаемый узел с. к. кучи H2.
 
 
-        c += 3;
-        a += 5;
+        // Необходимо найти первый узел в итоговой куче.
         if (curH1->degree < curH2->degree) {
+            // Если узел curH1 имеет меньшую степень, чем curH2,
+            // то список корней итоговой кучи будет начинаться именно с него.
             H.head = curH = curH1;
+            // Сдвиг к следующему узлу в списке корней.
             curH1 = curH1->sibling;
         } else {
+            // Аналогично в обратной ситуации.
             H.head = curH = curH2;
             curH2 = curH2->sibling;
         }
 
-        c += 3;
-        while (curH1 != NULL && curH2 != NULL) {
-            c += 4;
-            a += 3;
+
+        // Пока в обоих списках корней остались нераспределенные элементы,
+        // выполним следущие действия.
+        while (curH1 != NULL && curH2 != NULL)
             if (curH1->degree < curH2->degree) {
+                // Если степень узла curH1 меньше степени узла curH2,
+                // то добавляем его в список корней итоговой кучи.
                 curH = curH->sibling = curH1;
+                // Сдвигаем curH1 к следущющему узлу списка.
                 curH1 = curH1->sibling;
             } else {
+                // В противном случае поступаем аналогичным образом
+                // со списком curH2.
                 curH = curH->sibling = curH2;
                 curH2 = curH2->sibling;
             }
-        }
 
-        ++c;
-        if (curH1 == NULL) {
-            ++a;
-            curH->sibling = curH2;
-        }
-        ++c;
-        if (curH2 == NULL) {
-            ++a;
+
+        // Если в списке корней curH1 остались элементы,
+        if (curH1 != NULL)
+            // то добавляем их к итоговому списку корней.
             curH->sibling = curH1;
-        }
 
-        a += 3;
-        curH = H.head;
-        BlNode *prev = NULL, *next = curH->sibling;
+        // Если в списке корней curH2 остались элементы,
+        if (curH2 != NULL)
+            // то добавляем их к итоговому списку корней.
+            curH->sibling = curH2;
 
-        c += 3;
-        while (next != NULL && curH->degree == next->degree) {
-            c += 4;
-            a += 3;
-            if (curH->key >= next->key) {
+
+        curH = H.head; // Устанавливаем указатель на начало списка корней.
+        BlNode* prev = NULL;            // Указатель на предыдущий узел.
+        BlNode* next = curH->sibling;   // Указатель на следущий узел.
+
+        // Обрабатываем узлы с одинаковыми степенями,
+        // расположенные в начале списка.
+        while (next != NULL && curH->degree == next->degree)
+            if (curH->data.key >= next->data.key) {
+                // Если ключ текущего элемента больше ключа последущего,
+                // то текущий узел становиться сыном последущего.
+                // Это также фиксируется в дескрипторе.
                 H.head = curH = linkBl(curH, next);
+
+                // Сдвигаем указатель на следующий элемент.
                 next = next->sibling;
             } else {
+                // В протисном случае сохраняем указатель на элемент,
+                // расположенный за текущей рассматриваемой парой
+                // соседних элементов..
                 next = next->sibling;
+                // Сосед текущего становиться его сином.
                 curH = linkBl(curH->sibling, curH);
+                // Восстанавливаем корректность списка.
                 curH->sibling = next;
             }
-        }
 
 
-        ++c;
-        while (next != NULL) {
-            c += 2;
-            a += 3;
-            if (curH->degree == next->degree) {
-                ++c;
-                if (curH->key >= next->key) {
+        // Далее пока не конец списка.
+        while (next != NULL)
+            if (curH->degree == next->degree)
+                // Если степени узлов равны, то:
+                if (curH->data.key >= next->data.key) {
+                    // Если ключ текущего узла превышает значение ключа
+                    // последующего, то текущий становится сыном последующего.
                     prev->sibling = curH = linkBl(curH, next);
+
+                    // Сдвигаем указатель на следующий элемент.
                     next = next->sibling;
                 } else {
+                    // В протисном случае сохраняем указатель на элемент,
+                    // расположенный за текущей рассматриваемой парой
+                    // соседних элементов..
                     next = next->sibling;
+                    // Сосед текущего становиться его сином.
                     curH = linkBl(curH->sibling, curH);
+                    // Восстанавливаем корректность списка.
                     curH->sibling = next;
                 }
-            } else {
+            else {
+                // Иначе продвигаемся вперед по списку.
                 prev = curH;
                 curH = next;
                 next = next->sibling;
             }
-        }
     }
 
-    ++a;
+    // Вычисление общего количества элементов в обоих кучах.
     H.n = H1->n + H2->n;
 
-    /*if (H1->head == NULL)
-        H.head = H2->head;
-    else if (H2->head == NULL)
-        H.head = H1->head;
-    else {
-        BlNode* curH;
-        BlNode* curH1 = H1->head;
-        BlNode* curH2 = H2->head;
-
-        if (curH1->degree < curH2->degree) {
-            H.head = curH = curH1;
-            curH1 = curH1->sibling;
-        } else {
-            H.head = curH = curH2;
-            curH2 = curH2->sibling;
-        }
-
-        while (curH1 != NULL && curH2 != NULL)
-            if (curH1->degree < curH2->degree) {
-                curH->sibling = curH1;
-                curH = curH1;
-                curH1 = curH1->sibling;
-            } else {
-                curH->sibling = curH2;
-                curH = curH2;
-                curH2 = curH2->sibling;
-            }
-
-        if (curH1 == NULL)
-            curH->sibling = curH2;
-        if (curH2 == NULL)
-            curH->sibling = curH1;
-
-        curH = H.head;
-        BlNode *prev = NULL, *next = curH->sibling;
-        while (next != NULL && curH->degree == next->degree) {
-            if (curH->key >= next->key) {
-                H.head = curH = linkBl(curH, next);
-                next = next->sibling;
-            } else {
-                next = next->sibling;
-                curH = linkBl(curH, curH->sibling);
-                curH->sibling = next;
-            }
-        }
-
-
-        while (next != NULL) {
-            if (curH->degree == next->degree) {
-                if (curH->key >= next->key) {
-                    prev = prev->sibling = curH = linkBl(curH, next);
-                    next = next->sibling;
-                } else {
-                    next = next->sibling;
-                    prev = prev->sibling = curH = linkBl(next, curH);
-                    curH->sibling = next;
-                }
-            } else {
-                prev = curH;
-                curH = next;
-                next = next->sibling;
-            }
-        }
-    }
-
-    H.n = H1->n + H2->n;*/
+    // Возврат дескриптора итоговой кучи.
     return H;
 }
 
-#else
-BlHeap mergeBl( BlHeap* H1, BlHeap* H2 )
-{
-#ifdef TESTING
-    BlHeap H;
 
 
-    if (H1->head == NULL) {
-        ++c;
-        ++a;
-        H.head = H2->head;
-    }
-    else if (H2->head == NULL) {
-        c += 2;
-        ++a;
-        H.head = H1->head;
-    }
-    else {
-
-        BlNode* curF;
-        BlNode* curS;
-        BlNode* prev = NULL; ++a;
-        BlNode* tmp;
-
-
-        c += 3;
-        a += 3;
-        if (H1->head->degree < H2->head->degree) {
-            H.head = curF = H1->head;
-            curS = H2->head;
-        } else {
-            H.head = curF = H2->head;
-            curS = H1->head;
-        }
-
-        c += 3;
-        while (curF != NULL && curS != NULL) {
-            prev = curF; ++a;
-            c += 4;
-            if (curF->degree >= curS->degree) {
-                a += 4;
-                tmp = curS->sibling;
-                curS->sibling = curF->sibling;
-                prev->sibling = curS;
-                curS = tmp;
-            } else {
-                ++a;
-                curF = curF->sibling;
-            }
-        }
-
-        ++c;
-        if (curS != NULL) {
-            ++a;
-            prev->sibling = curS;
-        }
-
-
-        a += 2;
-        curF = H.head;
-        BlNode* next = curF->sibling;
-
-        c += 3;
-        while (next != NULL && curF->degree == next->degree) {
-
-            c += 4;
-            if (curF->key > next->key) {
-                a += 3;
-                H.head = curF = linkBl(curF, next);
-                next = curF->sibling;
-            } else {
-                a += 2;
-                next = next->sibling;
-                linkBl(curF->sibling, curF)->sibling = next;
-            }
-        }
-
-        ++c;
-        while (next != NULL) {
-            c += 2;
-            if (curF->degree == next->key) {
-                ++c;
-                if (curF->key > next->key) {
-                    a += 3;
-                    prev->sibling = curF = linkBl(curF, next);
-                    next = curF->sibling;
-                } else {
-                    a += 2;
-                    next = next->sibling;
-                    linkBl(curF->sibling, curF)->sibling = next;
-                }
-            }
-            else {
-                a += 3;
-                prev = curF;
-                curF = next;
-                next = next->sibling;
-            }
-        }
-    }
-
-    a += 3;
-    H.n = H1->n + H2->n;
-
-    return H;
-#else
-    BlHeap H;     // Итоговая куча.
-
-    // Если список корней кучи H1 пуст, то работа функции окончена.
-    if (H1->head == NULL)
-        H.head = H2->head;
-    // Если список корней кучи H2 пуст, то работа функции окончена.
-    else if (H2->head == NULL)
-        H.head = H1->head;
-    else {
-        /*
-         * Если обе кучи непусты, то выберем из них ту,
-         * первый элемент в списке корней которой имеет наименьшую
-         * степень в качестве основной (первичной),
-         * а другую в качестве побочной (вторичной).
-         */
-
-        BlNode* curF;           // Текущий корень в с. к. основной кучи.
-        BlNode* curS;           // Текущий корень в с. к. вторичной кучи.
-        BlNode* prev = NULL;    // Указатель на предыдущий узел списка.
-        BlNode* tmp;            // Служебный указатель на узел.
-
-        if (H1->head->degree < H2->head->degree) {
-            // Если степень первого узла в с. к. кучи H1 меньше,
-            // то выбрать её в качестве основной;
-            H.head = curF = H1->head;
-            // а вторую в качестве побочной.
-            curS = H2->head;
-        } else {
-            // Иначе основной станет куча H2,
-            H.head = curF = H2->head;
-            // а H1 побочной.
-            curS = H1->head;
-        }
-
-
-        // ::1 Формирование итогового списка корней.
-        // Пока обе кучи не пусты.
-        while (curF != NULL && curS != NULL) {
-            // Сохраняем указатель на предыдущий.
-            prev = curF;
-            if (curF->degree >= curS->degree) {
-                // Если степень текущего узла основной кучи не
-                // превышает степени текущего узла побочной кучи,
-                // то необходимо:
-
-                // 1. Сохранить указатель на следующий узел
-                // вторичной кучи.
-                tmp = curS->sibling;
-
-                // 2. Произвести вставку узла curS в односвязный
-                // список между узлами prev и curF.
-                curS->sibling = curF->sibling;
-                prev->sibling = curS;
-
-                // 3. Установить укаатель вторичной кучи на
-                // сохраненный следующий элемент.
-                curS = tmp;
-            } else
-                // Иначе переместить указатель основной кучи
-                // на следующий в списке элемент.
-                curF = curF->sibling;
-        }
-
-        // Если во вторичной куче остались элементы, то необходимо
-        // добавить их в конец с. к. итоговой кучи.
-        if (curS != NULL)
-            prev->sibling = curS;
-
-
-        // ::2 Объединение корней с одинаковыми степенями.
-        curF = H.head;  // Установка текущего указателя в начало
-                        // списка корней итоговой кучи.
-
-        // Указатель на узел следующий за текущим.
-        BlNode* next = curF->sibling;
-
-        // Слияние певых узлов итогового с. к.
-        while (next != NULL && curF->degree == next->degree)
-            // Пока степени текущего и последующего узлов совпадают.
-
-            if (curF->key > next->key) {
-                // Если ключ текущего узла больше ключа следующего,
-                // то он становиться сыном последнего.
-
-                // Значение в дескрипторе тоже должно меняться.
-                H.head = curF = linkBl(curF, next);
-
-                // Переход к следующему узлу.
-                next = curF->sibling;
-            } else {
-                // Иначе наоборот: следующий узел попадает в сыновья к текущему.
-
-                // Сохранение указателя на следующего
-                // за текущим узла.
-                tmp = next->sibling;
-
-                // Связывание следующего и текущего узлов.
-                next = linkBl(next, curF)->sibling = tmp;
-
-                // Восстановление указателя на следующего из
-                // сохраненного значения.
-                next = tmp;
-            }
-
-        // Окончательное связыание оставшихся узлов.
-        while (next != NULL) {
-            // Пока указатель на текущий узел не стал указывать
-            // на последний в списке.
-
-            if (curF->degree == next->key)
-            // Если степени текущего и следующего узлов совпали, то:
-                if (curF->key < next->key) {
-                    // Если ключ первого меньше, то:
-
-                    // Сохранить указатель на следующий
-                    // за next элемент.
-                    tmp = next->sibling;
-
-                    // Текущим узлом станет корневой узел.
-                    curF = linkBl(next, curF);
-
-                    // Восстановление указателя на следующего из
-                    // сохраненного значения.
-                    curF->sibling = next = tmp;
-                } else {
-                    // Иначе первый должен стать сыном второго,
-                    prev->sibling = curF = linkBl(curF, next);
-                    // а следущий будет указывать на следующий
-                    // за текущим.
-                    next = curF->sibling;
-                }
-            else {
-            // Иначе необходимо сместиться к следующей тройке узлов.
-
-                prev = curF;            // Предыдущий <- текущий.
-                curF = next;            // Текущий <- следующий.
-                next = next->sibling;   // Следующий <- следующий
-                                        // за следующим.
-            }
-        }
-    }
-
-    // Вычисление общего количества узлов в итоговой куче.
-    H.n = H1->n + H2->n;
-
-    // Возврат дескриптора полученной биномиальной кучи.
-    return H;
-
-#endif
-}
-#endif
-
-
-void insertBl( BlHeap* H, TBase k )
+void insertBl( BlHeap* H, TData data )
 {
     BlHeap _H;  // Создание дескриптора биномиальной кучи.
 
     // Выделение в куче памяти под узел.
     _H.head            = malloc(sizeof(BlNode));
-    _H.head->key       = k;    // Ининциализация ключа.
+    _H.head->data      = data; // Ининциализация ключа.
     _H.head->parent    = NULL; // У узла нет родителей.
     _H.head->child     = NULL; // У узла нет сыновей.
     _H.head->sibling   = NULL; // У узла нет соседей.
@@ -543,7 +271,7 @@ static BlNode* toRootList( BlNode* x )
 
 
     if (x->child == NULL)
-        // Если у узла x нет дочерних, то ффункция возвращает NULL.
+        // Если у узла x нет дочерних, то функция возвращает NULL.
         return NULL;
 
     for (previous = NULL, current = x->child, next = current->sibling;
@@ -563,17 +291,17 @@ static BlNode* toRootList( BlNode* x )
     // и удаление у него родителя.
     current->parent = NULL;
 
-    // Возврат первого узла нового списка.
+    // Возвращаем первый узел нового списка.
     return current;
 }
 
 
 
-TBase extractMinBl( BlHeap* H )
+TData extractMinBl( BlHeap* H )
 {
     if (H->head == NULL)
-        // Если куча пуста, то вернуть пустой указатель.
-        return NULL;
+        // Если куча пуста, то вернуть нулевые данные.
+        return (TData) {0};
     else {
         BlNode* minNode = H->head;// Указатель на минимальный узел кучи.
         BlNode* minPrev = NULL;   // Указатель на узел,
@@ -586,7 +314,7 @@ TBase extractMinBl( BlHeap* H )
         for (previous = minNode, current = minNode->sibling;
              current != NULL;
              previous = current, current = current->sibling) {
-            if (current->key < minNode->key) {
+            if (current->data.key < minNode->data.key) {
                 // Если ключ текущего узла меньше ключа текущего минимального,
                 // то необходимо сохранить указатель на него и узел,
                 // стоящий перед ним в списке.
@@ -618,44 +346,43 @@ TBase extractMinBl( BlHeap* H )
         H->n -= 1;      // Уменьшаем количество узлов в исходной куче.
 
         // Сохраняем полезную информацию, хранящуюся в узле.
-        TBase tmp = minNode->key;
+        TData tmp = minNode->data;
 
-        // И освобождение памяти, занимаемой узлом.
+        // И освобождаем память, занимаемую узлом.
         free(minNode);
-        return tmp; // Возврат минимального узла.
+        return tmp; // Возврат данных минимального узла.
     }
 }
 
 
 
-// swapKey: Обмен значений ключе узлов x и y.
+// swapKey: Обмен значений ключей узлов x и y.
 static void swapKey( BlNode* x, BlNode* y )
 {
-    TBase tmp = x->key;
-    x->key = y->key;
-    y->key = tmp;
+    TData tmp = x->data;
+    x->data = y->data;
+    y->data = tmp;
 }
 
 
 
-void decreaseKeyBl( BlHeap* H, BlNode* x, TBase k )
+void decreaseKeyBl( BlHeap* H, BlNode* x, TKey k )
 {
     // Если ключ узла не превышает текущего его значения.
-    if (k <= x->key)
+    if (k <= x->data.key)
     {
         // Записываем в узел x значение k.
-        x->key = k;
+        x->data.key = k;
         // Создание и инициализация указателя на родителя x.
         BlNode* y = x->parent;
         // Пока x не корень и наруено свойство неубывающей кучи.
-        while (y != NULL && x->key < y->key) {
+        while (y != NULL && x->data.key < y->data.key) {
             // Обмен значениями ключей узлов x и y.
             swapKey(x, y);
             x = y;          // x теперь указывает на своего родителя,
             y = y->parent; // а y -- на своего.
         }
-    } else
-        ; // ERROR TOO BIG KEY
+    }
 }
 
 
@@ -675,7 +402,7 @@ void deleteBl( BlHeap* H, BlNode* x )
     // Пока x -- не корень.
     while (y != NULL) {
         // Сдвинуть значение ключа y в ключ x;
-        x->key = y->key;
+        x->data = y->data;
 
         // И перейти на уровень выше.
         x = y;
@@ -709,43 +436,76 @@ void deleteBl( BlHeap* H, BlNode* x )
 }
 
 
+// ДОПОЛНИТЕЛЬНЫЕ ОПЕРАЦИИ ВЗАИМОДЕЙСТВИЯ
+// ==========================================================================
+
+
+unsigned sizeBl( BlHeap* H )
+{ return H->n; }
+
+
 // ОБХОДЫ
-//===================================================================
+// ==========================================================================
 
 
-void recPreOrderBl( BlNode* pNode, void (* f)( BlNode* ))
+// recPreOrderBl: Выполняет рекурсивный прямой обход текущего поддерева,
+// где pNode его корен, а child - левый сын.
+// Применяет к каждому узлу функцию f.
+static void recPreOrderBl( BlNode* pNode, BlNode* child,
+                           void (* f)( const BlNode* ))
 {
-    BlNode* child = pNode->child;
-
-    f(pNode);
-    while (child != NULL) {
-        recPreOrderBl(child, f);
-        child = child->sibling;
+    if (child == NULL)
+        // Если поддерево состоит из одного узла,
+        // то применяем к нему функцию f.
+        f(pNode);
+    else {
+        // Иначе выделяем в нем поддеревья.
+        recPreOrderBl(pNode, child->sibling, f);
+        recPreOrderBl(child, child->child, f);
     }
 }
 
 
-void recPostOrderBl( BlNode* pNode, void (* f)( BlNode* ))
-{
-    BlNode* child = pNode->child;
 
-    while (child != NULL) {
-        recPostOrderBl(child, f);
-        child = child->sibling;
+// recPostOrderBl: Выполняет рекурсивный обратный обход текущего поддерева,
+// где pNode его корен, а child - левый сын.
+// Применяет к каждому узлу функцию f.
+static void recPostOrderBl( BlNode* pNode, BlNode* child,
+                            void (* f)( const BlNode* ))
+{
+    if (child == NULL)
+        // Если поддерево состоит из одного узла,
+        // то применяем к нему функцию f.
+        f(pNode);
+    else {
+        // Иначе выделяем в нем поддеревья.
+        recPreOrderBl(child, child->child, f);
+        recPreOrderBl(pNode, child->sibling, f);
     }
-    f(pNode);
 }
 
 
-void preOrderBl( BlHeap* H, void (* f)( BlNode* ))
+
+void preOrderBl( BlHeap* H, void (* f)( const BlNode* ))
 {
-    if (H->head != NULL)
-        recPreOrderBl(H->head, f);
+    BlNode* current = H->head;  // Текущий узел в списке корней.
+
+    // Проходимся по списку корней и обрабатываем деревья.
+    while (current != NULL) {
+        recPreOrderBl(current, current->child, f);
+        current = current->sibling;
+    }
 }
 
 
-void postOrderBl( BlHeap* H, void (* f)( BlNode* ))
+
+void postOrderBl( BlHeap* H, void (* f)( const BlNode* ))
 {
-    if (H->head != NULL)
-        recPostOrderBl(H->head, f);
+    BlNode* current = H->head;  // Текущий узел в списке корней.
+
+    // Проходимся по списку корней и обрабатываем деревья.
+    while (current != NULL) {
+        recPostOrderBl(current, current->child, f);
+        current = current->sibling;
+    }
 }

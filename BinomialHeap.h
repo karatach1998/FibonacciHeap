@@ -1,16 +1,24 @@
+/*
+ * Стуктура TData может быть расширена, но она обязана содержать поле key
+ * любого типа, над которым определены операции сравнения.
+ */
+
 #ifndef BINOMIAL_HEAP_H
 #define BINOMIAL_HEAP_H
 
 
+typedef int TKey;           // Базовый тип ключа.
 
-
-
-typedef int TBase;          // Базовый тип ключа.
+// Информационная часть узла.
+typedef struct {
+    TKey key;               // Ключ.
+    // ..... Другие данные.
+} TData;
 
 // Узел биномиальной кучи.
 typedef struct blnode
 {
-    TBase key;              // Ключ.
+    TData data;             // Данные.
     struct blnode* parent;  // Указатель на родителя.
     struct blnode* child;   // Указатель на сына.
     struct blnode* sibling; // Указатель на (правого) соседа.
@@ -28,33 +36,41 @@ typedef struct
 // Создает и возвращает инициализированный дескриптор биномиальной кучи.
 BlHeap makeBlHeap( void );
 
-void deleteBlHeap( BlHeap* H );
+// Удаляет кучу H. Освобождает всю занимаемую её память.
+void doneBlHeap( BlHeap* H );
 
-// Возвращает указатель на минимальный узел биномиальной кучи H.
-BlNode* getMinimumBl( BlHeap* H );
+// Возвращает значение 1, если куча H пуста. Иначе 0.
+int isEmptyBl( const BlHeap* H );
+
+// Вставляет в кучу H элемент с данными data.
+void insertBl( BlHeap* H, TData data );
 
 // Возвращает результат слияния двух биномиальных куч H1 и H2.
-// В процессе выполнени функции кучи H1 и H2 "уничтожаются".
+// В процессе выполнения функции кучи H1 и H2 "уничтожаются".
 BlHeap mergeBl( BlHeap* H1, BlHeap* H2 );
 
-// Вставка в кучу H элемента со значением k.
-void insertBl( BlHeap* H, TBase k );
+// Возвращает информационную часть минимального узла биномиальной кучи H.
+// Если куча пуста, то возвращаемое значение не определено.
+TData getMinimumBl( const BlHeap* H );
 
-// Удаляет минимальный узел из кучи H и возвращает адрес этого узла.
-TBase extractMinBl( BlHeap* H );
+// Удаляет минимальный узел из кучи H и его информационную часть.
+// Если куча пуста, то возвращаемое значение не определено.
+TData extractMinBl( BlHeap* H );
 
 // Устанавливает значение ключевого поля узла x биомиальной кучи H
 // равным k. Новое значени не должно превышать старое.
-void decreaseKeyBl( BlHeap* H, BlNode* x, TBase k );
+void decreaseKeyBl( BlHeap* H, BlNode* x, TKey k );
 
 // Удаляет узел x из кучи H.
 void deleteBl( BlHeap* H, BlNode* x );
 
-void preOrderBl( BlHeap* H, void (* f)( BlNode* ));
-void postOrderBl( BlHeap* H, void (* f)( BlNode* ));
+// Возвращает количество элементов в куче H.
+unsigned sizeBl( BlHeap* H );
 
-void directBypass( BlHeap* H );
+// Выполняет прямой обход кучи H. К каждому узлу применяется фукция f.
+void preOrderBl( BlHeap* H, void (* f)( const BlNode* ));
 
-int isEmptyBl( BlHeap* H );
+// Выполняет обратный обход кучи H. К каждому узлу применяется фукция f.
+void postOrderBl( BlHeap* H, void (* f)( const BlNode* ));
 
 #endif // BINOMIAL_HEAP_H
